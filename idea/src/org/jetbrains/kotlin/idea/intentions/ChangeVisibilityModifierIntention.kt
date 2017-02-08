@@ -19,14 +19,19 @@ package org.jetbrains.kotlin.idea.intentions
 import com.intellij.codeInsight.intention.HighPriorityAction
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.util.TextRange
+import com.intellij.psi.PsiMember
+import com.intellij.psi.PsiModifier
 import org.jetbrains.kotlin.descriptors.CallableDescriptor
 import org.jetbrains.kotlin.descriptors.DeclarationDescriptorWithVisibility
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.descriptors.Visibility
+import org.jetbrains.kotlin.idea.caches.resolve.resolveToDescriptorIfAny
 import org.jetbrains.kotlin.idea.core.canBePrivate
 import org.jetbrains.kotlin.idea.core.canBeProtected
 import org.jetbrains.kotlin.idea.core.setVisibility
 import org.jetbrains.kotlin.idea.core.toDescriptor
+import org.jetbrains.kotlin.idea.refactoring.CallableRefactoring
+import org.jetbrains.kotlin.idea.refactoring.getAffectedCallables
 import org.jetbrains.kotlin.lexer.KtModifierKeywordToken
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.*
@@ -73,8 +78,30 @@ open class ChangeVisibilityModifierIntention protected constructor(
             defaultRange
     }
 
+    private val javaVisibilityModifier: String?
+        get() = when (modifier) {
+            KtTokens.PRIVATE_KEYWORD -> PsiModifier.PRIVATE
+            KtTokens.INTERNAL_KEYWORD -> PsiModifier.PACKAGE_LOCAL
+            KtTokens.PROTECTED_KEYWORD -> PsiModifier.PROTECTED
+            KtTokens.PUBLIC_KEYWORD -> PsiModifier.PUBLIC
+            else -> null
+        }
+
     override fun applyTo(element: KtDeclaration, editor: Editor?) {
-        element.setVisibility(modifier)
+        val descriptor = (element as? KtNamedDeclaration)?.resolveToDescriptorIfAny() as? CallableDescriptor
+                         ?: return element.setVisibility(modifier)
+
+        object : CallableRefactoring<CallableDescriptor>(element.project, descriptor, text) {
+            override fun performRefactoring(descriptorsForChange: Collection<CallableDescriptor>) {
+                val callables = getAffectedCallables(project, descriptorsForChange)
+                for (callable in callables) {
+                    when (callable) {
+                        is KtModifierListOwner -> callable.setVisibility(modifier)
+                        is PsiMember -> javaVisibilityModifier?.let { callable.modifierList?.setModifierProperty(it, true) }
+                    }
+                }
+            }
+        }.run()
     }
 
     private fun KtModifierKeywordToken.toVisibility(): Visibility {
