@@ -1715,9 +1715,21 @@ public class QuickFixTestGenerated extends AbstractQuickFixTest {
                     KotlinTestUtils.assertAllTestsPresentByMetadata(this.getClass(), new File("idea/testData/quickfix/createFromUsage/createClass/referenceExpression"), Pattern.compile("^([\\w\\-_]+)\\.kt$"), TargetBackend.ANY, true);
                 }
 
+                @TestMetadata("annotationByClassLiteral.kt")
+                public void testAnnotationByClassLiteral() throws Exception {
+                    String fileName = KotlinTestUtils.navigationMetadata("idea/testData/quickfix/createFromUsage/createClass/referenceExpression/annotationByClassLiteral.kt");
+                    doTest(fileName);
+                }
+
                 @TestMetadata("annotationNoReceiver.kt")
                 public void testAnnotationNoReceiver() throws Exception {
                     String fileName = KotlinTestUtils.navigationMetadata("idea/testData/quickfix/createFromUsage/createClass/referenceExpression/annotationNoReceiver.kt");
+                    doTest(fileName);
+                }
+
+                @TestMetadata("classByClassLiteral.kt")
+                public void testClassByClassLiteral() throws Exception {
+                    String fileName = KotlinTestUtils.navigationMetadata("idea/testData/quickfix/createFromUsage/createClass/referenceExpression/classByClassLiteral.kt");
                     doTest(fileName);
                 }
 
@@ -1754,6 +1766,12 @@ public class QuickFixTestGenerated extends AbstractQuickFixTest {
                 @TestMetadata("classWithReceiver.kt")
                 public void testClassWithReceiver() throws Exception {
                     String fileName = KotlinTestUtils.navigationMetadata("idea/testData/quickfix/createFromUsage/createClass/referenceExpression/classWithReceiver.kt");
+                    doTest(fileName);
+                }
+
+                @TestMetadata("enumByClassLiteral.kt")
+                public void testEnumByClassLiteral() throws Exception {
+                    String fileName = KotlinTestUtils.navigationMetadata("idea/testData/quickfix/createFromUsage/createClass/referenceExpression/enumByClassLiteral.kt");
                     doTest(fileName);
                 }
 
@@ -1820,6 +1838,18 @@ public class QuickFixTestGenerated extends AbstractQuickFixTest {
                 @TestMetadata("enumNoReceiver.kt")
                 public void testEnumNoReceiver() throws Exception {
                     String fileName = KotlinTestUtils.navigationMetadata("idea/testData/quickfix/createFromUsage/createClass/referenceExpression/enumNoReceiver.kt");
+                    doTest(fileName);
+                }
+
+                @TestMetadata("interfaceByClassLiteral.kt")
+                public void testInterfaceByClassLiteral() throws Exception {
+                    String fileName = KotlinTestUtils.navigationMetadata("idea/testData/quickfix/createFromUsage/createClass/referenceExpression/interfaceByClassLiteral.kt");
+                    doTest(fileName);
+                }
+
+                @TestMetadata("objectByClassLiteral.kt")
+                public void testObjectByClassLiteral() throws Exception {
+                    String fileName = KotlinTestUtils.navigationMetadata("idea/testData/quickfix/createFromUsage/createClass/referenceExpression/objectByClassLiteral.kt");
                     doTest(fileName);
                 }
 
