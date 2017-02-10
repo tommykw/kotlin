@@ -21,10 +21,15 @@ import com.intellij.psi.PsiClass
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.DirectClassInheritorsSearch
 import com.intellij.util.Processor
+import org.jetbrains.kotlin.caches.resolve.KotlinCacheService
+import org.jetbrains.kotlin.idea.caches.resolve.resolveToDescriptor
+import org.jetbrains.kotlin.idea.core.KotlinIndicesHelper
 import org.jetbrains.kotlin.idea.decompiler.navigation.SourceNavigationHelper
+import org.jetbrains.kotlin.idea.project.TargetPlatformDetector
 import org.jetbrains.kotlin.idea.search.fileScope
 import org.jetbrains.kotlin.idea.stubindex.KotlinSourceFilterScope
 import org.jetbrains.kotlin.idea.stubindex.KotlinSuperClassIndex
+import org.jetbrains.kotlin.idea.util.ProjectRootsUtil
 import org.jetbrains.kotlin.idea.util.application.runReadAction
 
 open class KotlinDirectInheritorsSearcher : QueryExecutorBase<PsiClass, DirectClassInheritorsSearch.SearchParameters>(true) {
@@ -36,13 +41,37 @@ open class KotlinDirectInheritorsSearcher : QueryExecutorBase<PsiClass, DirectCl
         val originalScope = queryParameters.scope
         val scope = originalScope as? GlobalSearchScope ?: baseClass.containingFile?.fileScope() ?: return
 
+        val file = baseClass.containingFile
+
+        fun collectTypeAliasShortNames(): Set<String> {
+            val project = baseClass.project
+            if (!ProjectRootsUtil.isInProjectSource(file)) return emptySet()
+            val platform = TargetPlatformDetector.getPlatform(file)
+
+            val resolutionFacade = KotlinCacheService.getInstance(project).getResolutionFacadeByFile(file, platform)
+
+            val descriptor = baseClass.resolveToDescriptor(resolutionFacade) ?: return emptySet()
+
+            val indicesHelper = KotlinIndicesHelper(resolutionFacade, scope, { true })
+
+            val type = descriptor.defaultType
+            return indicesHelper
+                    .resolveTypeAliasesUsingIndex(type, descriptor.name.asString())
+                    .map { it.name.asString() }.toSet()
+        }
+
+        val names = listOf(name) + collectTypeAliasShortNames()
+
         runReadAction {
             val noLibrarySourceScope = KotlinSourceFilterScope.projectSourceAndClassFiles(scope, baseClass.project)
-            KotlinSuperClassIndex.getInstance()
-                    .get(name, baseClass.project, noLibrarySourceScope).asSequence()
-                    .mapNotNull { candidate -> SourceNavigationHelper.getOriginalPsiClassOrCreateLightClass(candidate) }
-                    .filter { candidate -> candidate.isInheritor(baseClass, false) }
-                    .forEach { candidate -> consumer.process(candidate) }
+
+            names.forEach { name ->
+                KotlinSuperClassIndex.getInstance()
+                        .get(name, baseClass.project, noLibrarySourceScope).asSequence()
+                        .mapNotNull { candidate -> SourceNavigationHelper.getOriginalPsiClassOrCreateLightClass(candidate) }
+                        .filter { candidate -> candidate.isInheritor(baseClass, false) }
+                        .forEach { candidate -> consumer.process(candidate) }
+            }
         }
     }
 }

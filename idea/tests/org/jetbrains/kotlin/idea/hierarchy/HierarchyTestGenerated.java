@@ -232,6 +232,12 @@ public class HierarchyTestGenerated extends AbstractHierarchyTest {
             String fileName = KotlinTestUtils.navigationMetadata("idea/testData/hierarchy/class/super/TwoTraits/");
             doSuperClassHierarchyTest(fileName);
         }
+
+        @TestMetadata("TypeAlias")
+        public void testTypeAlias() throws Exception {
+            String fileName = KotlinTestUtils.navigationMetadata("idea/testData/hierarchy/class/super/TypeAlias/");
+            doSuperClassHierarchyTest(fileName);
+        }
     }
 
     @TestMetadata("idea/testData/hierarchy/class/sub")
@@ -287,6 +293,12 @@ public class HierarchyTestGenerated extends AbstractHierarchyTest {
         @TestMetadata("TraitFromTrait")
         public void testTraitFromTrait() throws Exception {
             String fileName = KotlinTestUtils.navigationMetadata("idea/testData/hierarchy/class/sub/TraitFromTrait/");
+            doSubClassHierarchyTest(fileName);
+        }
+
+        @TestMetadata("TypeAlias")
+        public void testTypeAlias() throws Exception {
+            String fileName = KotlinTestUtils.navigationMetadata("idea/testData/hierarchy/class/sub/TypeAlias/");
             doSubClassHierarchyTest(fileName);
         }
     }
