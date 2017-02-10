@@ -17,19 +17,16 @@
 package org.jetbrains.kotlin.idea.search.ideaExtensions
 
 import com.intellij.openapi.application.QueryExecutorBase
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiClass
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.DirectClassInheritorsSearch
 import com.intellij.util.Processor
-import org.jetbrains.kotlin.caches.resolve.KotlinCacheService
-import org.jetbrains.kotlin.idea.caches.resolve.resolveToDescriptor
-import org.jetbrains.kotlin.idea.core.KotlinIndicesHelper
 import org.jetbrains.kotlin.idea.decompiler.navigation.SourceNavigationHelper
-import org.jetbrains.kotlin.idea.project.TargetPlatformDetector
 import org.jetbrains.kotlin.idea.search.fileScope
 import org.jetbrains.kotlin.idea.stubindex.KotlinSourceFilterScope
 import org.jetbrains.kotlin.idea.stubindex.KotlinSuperClassIndex
-import org.jetbrains.kotlin.idea.util.ProjectRootsUtil
+import org.jetbrains.kotlin.idea.stubindex.KotlinTypeAliasByExpansionShortNameIndex
 import org.jetbrains.kotlin.idea.util.application.runReadAction
 
 open class KotlinDirectInheritorsSearcher : QueryExecutorBase<PsiClass, DirectClassInheritorsSearch.SearchParameters>(true) {
@@ -43,24 +40,22 @@ open class KotlinDirectInheritorsSearcher : QueryExecutorBase<PsiClass, DirectCl
 
         val file = baseClass.containingFile
 
-        fun collectTypeAliasShortNames(): Set<String> {
-            val project = baseClass.project
-            if (!ProjectRootsUtil.isInProjectSource(file)) return emptySet()
-            val platform = TargetPlatformDetector.getPlatform(file)
+        val names = mutableSetOf(name)
+        val project = file.project
 
-            val resolutionFacade = KotlinCacheService.getInstance(project).getResolutionFacadeByFile(file, platform)
+        val typeAliasIndex = KotlinTypeAliasByExpansionShortNameIndex.getInstance()
 
-            val descriptor = baseClass.resolveToDescriptor(resolutionFacade) ?: return emptySet()
-
-            val indicesHelper = KotlinIndicesHelper(resolutionFacade, scope, { true })
-
-            val type = descriptor.defaultType
-            return indicesHelper
-                    .resolveTypeAliasesUsingIndex(type, descriptor.name.asString())
-                    .map { it.name.asString() }.toSet()
+        fun searchForTypeAliasesRecursively(typeName: String) {
+            ProgressManager.checkCanceled()
+            typeAliasIndex[typeName, project, scope].asSequence()
+                    .map { it.name }
+                    .filterNotNull()
+                    .filter { it !in names }
+                    .onEach { names.add(it) }
+                    .forEach(::searchForTypeAliasesRecursively)
         }
 
-        val names = listOf(name) + collectTypeAliasShortNames()
+        searchForTypeAliasesRecursively(name)
 
         runReadAction {
             val noLibrarySourceScope = KotlinSourceFilterScope.projectSourceAndClassFiles(scope, baseClass.project)
