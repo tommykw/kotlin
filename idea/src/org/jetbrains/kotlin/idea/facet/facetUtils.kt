@@ -134,26 +134,28 @@ fun KotlinFacet.configureFacet(
     }
 }
 
+// Primary fields are written to argument bean directly. They shouldn't be present in "additional compiler arguments" string
 // Update these lists when facet/project settings UI changes
-private val commonExposedFields = listOf("languageVersion",
+private val commonPrimaryFields = listOf("languageVersion",
                                          "apiVersion",
                                          "suppressWarnings",
                                          "coroutinesEnable",
                                          "coroutinesWarn",
                                          "coroutinesError")
-private val jvmExposedFields = commonExposedFields +
+private val jvmPrimaryFields = commonPrimaryFields +
                                listOf("jvmTarget")
-private val jsExposedFields = commonExposedFields +
+private val jsPrimaryFields = commonPrimaryFields +
                               listOf("sourceMap",
                                      "outputPrefix",
                                      "outputPostfix",
-                                     "moduleKind")
+                                     "moduleKind",
+                                     "outputFile")
 
-private val CommonCompilerArguments.exposedFields: List<String>
+private val CommonCompilerArguments.primaryFields: List<String>
     get() = when (this) {
-        is K2JVMCompilerArguments -> jvmExposedFields
-        is K2JSCompilerArguments -> jsExposedFields
-        else -> commonExposedFields
+        is K2JVMCompilerArguments -> jvmPrimaryFields
+        is K2JSCompilerArguments -> jsPrimaryFields
+        else -> commonPrimaryFields
     }
 
 fun parseCompilerArgumentsToFacet(arguments: List<String>, defaultArguments: List<String>, kotlinFacet: KotlinFacet) {
@@ -203,7 +205,7 @@ fun parseCompilerArgumentsToFacet(arguments: List<String>, defaultArguments: Lis
         // Retain only fields exposed in facet configuration editor.
         // The rest is combined into string and stored in CompilerSettings.additionalArguments
 
-        val exposedFields = compilerArguments.exposedFields
+        val exposedFields = compilerArguments.primaryFields
 
         fun exposeAsAdditionalArgument(field: Field) = field.name !in exposedFields && field.get(compilerArguments) != field.get(defaultCompilerArguments)
 
