@@ -280,34 +280,42 @@ public abstract class StackValue {
         return new Expression(type, expression, generator);
     }
 
-    private static void box(Type type, Type toType, InstructionAdapter v) {
+    @Nullable
+    private static Type box(Type type, Type toType, InstructionAdapter v) {
         if (type == Type.BYTE_TYPE || toType.getInternalName().equals(NULLABLE_BYTE_TYPE_NAME) && type == Type.INT_TYPE) {
             v.cast(type, Type.BYTE_TYPE);
-            v.invokestatic(NULLABLE_BYTE_TYPE_NAME, "valueOf", "(B)L" + NULLABLE_BYTE_TYPE_NAME + ";", false);
+            return invokestatic(v, NULLABLE_BYTE_TYPE_NAME, "valueOf", "(B)L" + NULLABLE_BYTE_TYPE_NAME + ";", false);
         }
         else if (type == Type.SHORT_TYPE || toType.getInternalName().equals(NULLABLE_SHORT_TYPE_NAME) && type == Type.INT_TYPE) {
             v.cast(type, Type.SHORT_TYPE);
-            v.invokestatic(NULLABLE_SHORT_TYPE_NAME, "valueOf", "(S)L" + NULLABLE_SHORT_TYPE_NAME + ";", false);
+            return invokestatic(v, NULLABLE_SHORT_TYPE_NAME, "valueOf", "(S)L" + NULLABLE_SHORT_TYPE_NAME + ";", false);
         }
         else if (type == Type.LONG_TYPE || toType.getInternalName().equals(NULLABLE_LONG_TYPE_NAME) && type == Type.INT_TYPE) {
             v.cast(type, Type.LONG_TYPE);
-            v.invokestatic(NULLABLE_LONG_TYPE_NAME, "valueOf", "(J)L" + NULLABLE_LONG_TYPE_NAME + ";", false);
+            return invokestatic(v, NULLABLE_LONG_TYPE_NAME, "valueOf", "(J)L" + NULLABLE_LONG_TYPE_NAME + ";", false);
         }
         else if (type == Type.INT_TYPE) {
-            v.invokestatic("java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;", false);
+            return invokestatic(v, "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;", false);
         }
         else if (type == Type.BOOLEAN_TYPE) {
-            v.invokestatic("java/lang/Boolean", "valueOf", "(Z)Ljava/lang/Boolean;", false);
+            return invokestatic(v, "java/lang/Boolean", "valueOf", "(Z)Ljava/lang/Boolean;", false);
         }
         else if (type == Type.CHAR_TYPE) {
-            v.invokestatic("java/lang/Character", "valueOf", "(C)Ljava/lang/Character;", false);
+            return invokestatic(v, "java/lang/Character", "valueOf", "(C)Ljava/lang/Character;", false);
         }
         else if (type == Type.FLOAT_TYPE) {
-            v.invokestatic("java/lang/Float", "valueOf", "(F)Ljava/lang/Float;", false);
+            return invokestatic(v, "java/lang/Float", "valueOf", "(F)Ljava/lang/Float;", false);
         }
         else if (type == Type.DOUBLE_TYPE) {
-            v.invokestatic("java/lang/Double", "valueOf", "(D)Ljava/lang/Double;", false);
+            return invokestatic(v, "java/lang/Double", "valueOf", "(D)Ljava/lang/Double;", false);
         }
+        return null;
+    }
+
+    @NotNull
+    private static Type invokestatic(InstructionAdapter v, String owner, String name, String desc, boolean itf) {
+        v.invokestatic(owner, name, desc, itf);
+        return Type.getReturnType(desc);
     }
 
     private static void unbox(Type type, InstructionAdapter v) {
@@ -392,7 +400,12 @@ public abstract class StackValue {
                 }
             }
             else {
-                box(fromType, toType, v);
+                Type boxedType = box(fromType, toType, v);
+                if (boxedType != null) {
+                    //this cast in necessary for bytecode 51.0+ (JDK 7+)
+                    //see details in BinaryClassWriter.getCommonSuperClass
+                    coerce(boxedType, toType,  v);
+                }
             }
         }
         else if (fromType.getSort() == Type.OBJECT) {
