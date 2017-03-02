@@ -77,16 +77,14 @@ fun contextForBuildingLighterClasses(files: List<KtFile>): LightClassConstructio
     val representativeFile = files.first()
     val resolveSession = setupAdHocResolve(representativeFile.project, representativeFile.getResolutionFacade().moduleDescriptor, files)
 
-//    val descriptor = resolveSession.resolveToDescriptor(classOrObject)
-//    ForceResolveUtil.forceResolveAllContents(descriptor)
-
     return LightClassConstructionContext(resolveSession.bindingContext, resolveSession.moduleDescriptor)
 }
 
 private fun setupAdHocResolve(project: Project, realWorldModule: ModuleDescriptor, files: List<KtFile>): ResolveSession {
     val trace = BindingTraceContext()
     val sm = LockBasedStorageManager.NO_LOCKS
-    val moduleDescriptor = ModuleDescriptorImpl(Name.special("<dummy>"), sm, realWorldModule.builtIns)
+    // TODO_R: test internals
+    val moduleDescriptor = ModuleDescriptorImpl(realWorldModule.name, sm, realWorldModule.builtIns)
     val jvmFieldClass = realWorldModule.getPackage(FqName("kotlin.jvm")).memberScope
             .getContributedClassifier(Name.identifier("JvmField"), NoLookupLocation.FROM_IDE)
 
