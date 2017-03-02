@@ -279,6 +279,8 @@ class KtLightMethodImpl private constructor(
     override fun findSuperMethods(parentClass: PsiClass?) = clsDelegate.findSuperMethods(parentClass)
 
     override fun getContainingFile() = parent.containingFile
+
+    override fun isValid() = containingClass.isValid
 }
 
 fun KtLightMethod.isTraitFakeOverride(): Boolean {
