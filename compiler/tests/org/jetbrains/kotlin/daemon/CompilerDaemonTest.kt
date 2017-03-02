@@ -419,6 +419,7 @@ class CompilerDaemonTest : KotlinIntegrationTestBase() {
                                                           runFilesPath = File(tmpdir, getTestName(true)).absolutePath,
                                                           verbose = true)
                         val logFile = createTempFile("kotlin-daemon-test", ".log")
+                        logFiles[threadNo] = logFile
                         val daemonJVMOptions =
                                 configureDaemonJVMOptions(DaemonJVMOptions(maxMemory = "2048m"),
                                                           "D$COMPILE_DAEMON_LOG_PATH_PROPERTY=\"${logFile.loggerCompatiblePath}\"",
@@ -426,7 +427,9 @@ class CompilerDaemonTest : KotlinIntegrationTestBase() {
                         val daemonWithSession = KotlinCompilerClient.connectAndLease(compilerId, flagFile, daemonJVMOptions, daemonOptions,
                                                                                      DaemonReportingTargets(out = System.err), autostart = true,
                                                                                      leaseSession = true, sessionAliveFlagFile = sessionFlagFile)
-                        assertNotNull("failed to connect daemon", daemonWithSession?.first)
+                        if (daemonWithSession?.first == null) {
+                            fail("failed to connect daemon:\n${logFile.readLines().joinToString("\n")}\n------")
+                        }
                         val jar = tmpdir.absolutePath + File.separator + "hello.$threadNo.jar"
                         val res = KotlinCompilerClient.compile(
                                 daemonWithSession!!.first,
@@ -435,7 +438,6 @@ class CompilerDaemonTest : KotlinIntegrationTestBase() {
                                 arrayOf(File(getHelloAppBaseDir(), "hello.kt").absolutePath, "-d", jar),
                                 outStreams[threadNo])
                         resultCodes[threadNo] = res
-                        logFiles[threadNo] = logFile
                     }
                 }
             }
@@ -453,7 +455,7 @@ class CompilerDaemonTest : KotlinIntegrationTestBase() {
 
         val electionLogs = (0..(PARALLEL_THREADS_TO_START - 1)).map {
             val logContents = logFiles[it]?.readLines()
-            assertEquals("Compilation on thread $it failed:\n${outStreams[it]}\n\n------- daemon log: -------\n$logContents\n-------", 0, resultCodes[it])
+            assertEquals("Compilation on thread $it failed:\n${outStreams[it]}\n\n------- daemon log: -------\n${logContents?.joinToString("\n")}\n-------", 0, resultCodes[it])
             logContents?.find { it.contains(LOG_PREFIX_ASSUMING_OTHER_DAEMONS_HAVE) }
         }
 
